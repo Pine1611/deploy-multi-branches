@@ -1,0 +1,86 @@
+name: Deploy branches to GitHub Pages
+
+on:
+    push:
+        branches:
+            - main
+            - staging
+
+    delete: # cleanup when branches are deleted
+
+permissions:
+    contents: write
+    pages: write
+
+concurrency:
+    group: ci-${{github.ref}}
+    cancel-in-progress: false
+
+jobs:
+    # build job
+    build:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Prepare site
+              run: |
+                  mkdir site
+                  shopt -s extglob
+                  cp -r !(site|.git|.github) site/
+            - name: Create env js file
+              if: github.ref_name == 'main'
+              run: echo 'export const ENV = "PRD";' > site/assets/js/env.mjs
+            - name: Create env js file
+              if: github.ref_name != 'main'
+              run: echo 'export const ENV = "DEV";' > site/assets/js/env.mjs
+            # upload artifact
+            - name: Upload artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: build-artifact
+                  path: .
+
+    # deploy main to root folder
+    deploy-main:
+        if: github.ref_name == 'main'
+        runs-on: ubuntu-latest
+        needs: build
+        steps:
+            # 🔴 MAIN → ROOT
+            - name: Deploy main to root
+              uses: peaceiris/actions-gh-pages@v4
+              with:
+                  github_token: ${{ secrets.GITHUB_TOKEN }}
+                  publish_dir: ./site
+                  keep_files: true
+
+    # deploy other branches into subfolder
+    deploy-branches:
+        runs-on: ubuntu-latest
+        needs: build
+        steps:
+            # 🔵 OTHER BRANCHES → SUBFOLDER
+            - name: Deploy branch to subfolder
+              uses: peaceiris/actions-gh-pages@v4
+              with:
+                  github_token: ${{ secrets.GITHUB_TOKEN }}
+                  publish_dir: ./site
+                  destination_dir: ${{ github.ref_name }}
+                  keep_files: true
+
+    # Cleanup from Pages
+    cleanup:
+        if: github.event_name == 'delete' &&
+            github.event.ref_type == 'branch' &&
+            github.event.ref != 'main'
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Remove deleted branch from Pages
+              uses: peaceiris/actions-gh-pages@v4
+              with:
+                  github_token: ${{ secrets.GITHUB_TOKEN }}
+                  publish_dir: .
+                  destination_dir: ${{ github.event.ref }}
+                  keep_files: false
