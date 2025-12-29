@@ -1,0 +1,10 @@
+{
+    "general": {
+        "title": "An example CI/CD pipeline for dev, staging, and production environments.",
+        "email": "iampine.work@gmail.com",
+        "author": "I am Pine",
+        "site": "ipine.dev",
+        "cite": "@ 2025"
+    },
+    "version": "v1.0.0"
+}
