@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta charset="utf-8" />
+
+    <title>You've ripped a hole in the fabric of the internet. Love, from Pine!</title>
+
+    <meta name="description" content="An example CI/CD pipeline for dev, staging, and production environments." />
+    <meta name="keywords" content="ci/cd, pipeline, workflows" />
+    <meta name="viewport"
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0" />
+    <meta name="author" content="I am Pine!" />
+    <link rel="icon" type="favicon" href="assets/images/fav-ico.gif" />
+
+    <link rel="stylesheet" type="text/css" href="assets/css/marx.min.css" />
+    <link rel="stylesheet" type="text/css" href="assets/css/style.css" />
+</head>
+
+<body>
+    <main>
+        <h1>CI/CD pipeline workflows - How to?</h1>
+        <p>
+            Now, I will show you how to setup and create actions for deploy to <code>gh-pages</code>
+        </p>
+        <hr />
+
+        <h3>Prerequisites</h3>
+        <p>Basic settings for Github Pages</p>
+        <ul>
+            <li>Go to <code>Settings</code> >> <code>Pages</code> on section <code>Code and automation</code></li>
+            <li>
+                On <code>Build and deployment</code> with <code>Source</code> choose
+                <code>Deploy from a branch</code>
+            </li>
+            <li>
+                Choose <code>Branch</code> is <code>gh-pages</code> <b>This step is necessary!</b> <sup><small>If
+                        you don't have this branch, create it. This branch will auto create environment for
+                        gh-pages</small></sup>
+            </li>
+        </ul>
+
+        <h3>Github workflows</h3>
+        <p>Create github workflows actions file at
+            <code>/.github/workflows/deploy-multi-branches.yml</code>
+        </p>
+
+        <h5>Triggers events on github:</h5>
+        <pre>
+            <code>name: Deploy branches to GitHub Pages</code>
+            <code>on: # lists all the events that can trigger this workflow.</code>
+            <code>  push: # triggers on pushes to branches</code>
+            <code>      branches:</code>
+            <code>          - main</code>
+            <code>          - staging</code>
+            <code>  delete: # cleanup when branches are deleted</code>
+            <code>permissions:</code>
+            <code>  contents: write # grant write access to the repository</code>
+        </pre>
+
+        <h5>Define jobs to running tasks:</h5>
+        <p>Prepare folder artifacts, create a build job, so can re-use for each deploy jobs.</p>
+        <pre>
+            <code>jobs: # begin define all jobs need to run</code>
+            <code>  build: # for prepare artifacts</code>
+            <code>  runs-on: ubuntu-latest # specifies the type of machine for each job</code>
+            <code>  steps: # each job prints a message to show where it's running.</code>
+            <code>      - name: Checkout</code>
+            <code>        uses: actions/checkout@v4</code>
+            <code>      - name: Prepare site</code>
+            <code>        run: |</code>
+            <code>            mkdir site # create folder for artifacts</code>
+            <code>            shopt -s extglob # enable extglob for regular expressions</code>
+            <code>            cp -r !(site|.git|.github) site/ # copy all files to folder site</code>
+        </pre>
+
+        <p>Begin define deploy jobs for each branches. I used <code>peaceiris/actions-gh-pages@v4</code>, this action
+            can be deploy static files and publish gh-pages easily.</p>
+        <pre>
+            <code>      - name: Deploy main to root</code>
+            <code>        if: github.ref_name == 'main' # conditional execution</code>
+            <code>        uses: peaceiris/actions-gh-pages@v4</code>
+            <code>        with:</code>
+            <code>            github_token: ${{ secrets.GITHUB_TOKEN }} # uses a built-in token for authentication</code>
+            <code>            publish_dir: ./site # points to folder artifacts to deploy</code>
+            <code>            keep_files: true # keeping existing files</code>
+            <code></code>
+            <code>      - name: Deploy branch to subfolder</code>
+            <code>        uses: peaceiris/actions-gh-pages@v4</code>
+            <code>        with:</code>
+            <code>            github_token: ${{ secrets.GITHUB_TOKEN }} </code>
+            <code>            publish_dir: ./site</code>
+            <code>            # points to desination folder with branches name</code>
+            <code>            destination_dir: ${{ github.ref_name }}</code>
+            <code>            keep_files: true # keeping existing files</code>
+        </pre>
+
+        <p>Finaly, define cleanup job:</p>
+        <pre>
+            <code># Cleanup from Pages</code>
+            <code>cleanup: # conditional execution only when delete branches</code>
+            <code>      if: github.event_name == 'delete' &&</code>
+            <code>          github.event.ref_type == 'branch' &&</code>
+            <code>          github.event.ref != 'main'</code>
+            <code>      runs-on: ubuntu-latest</code>
+            <code>      steps:</code>
+            <code>          - name: Remove deleted branch from Pages</code>
+            <code>            uses: peaceiris/actions-gh-pages@v4</code>
+            <code>            with:</code>
+            <code>                github_token: ${{ secrets.GITHUB_TOKEN }}</code>
+            <code>                publish_dir: .</code>
+            <code>                destination_dir: ${{ github.event.ref }}</code>
+            <code>                keep_files: false</code>
+        </pre>
+
+        <hr />
+        <h2>License</h2>
+        <a href="https://opensource.org/licenses/MIT" target="_blank">MIT</a>
+    </main>
+
+    <footer id="footer">
+        <!-- by I am Pine, <a href="https://ipine.dev">ipine.dev</a> -->
+        <!-- auto generate -->
+    </footer>
+
+    <div class="badges">
+        <div class="badges__tag badges__tag--version" id="version"></div>
+    </div>
+
+    <div class="nav">
+        <a class="nav__item" href="index.html">
+            <svg width="20" height="20" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"
+                fill="#26a526">
+                <path
+                    d="M11.47 3.841a.75.75 0 0 1 1.06 0l8.69 8.69a.75.75 0 1 0 1.06-1.061l-8.689-8.69a2.25 2.25 0 0 0-3.182 0l-8.69 8.69a.75.75 0 1 0 1.061 1.06l8.69-8.689Z" />
+                <path
+                    d="m12 5.432 8.159 8.159c.03.03.06.058.091.086v6.198c0 1.035-.84 1.875-1.875 1.875H15a.75.75 0 0 1-.75-.75v-4.5a.75.75 0 0 0-.75-.75h-3a.75.75 0 0 0-.75.75V21a.75.75 0 0 1-.75.75H5.625a1.875 1.875 0 0 1-1.875-1.875v-6.198a2.29 2.29 0 0 0 .091-.086L12 5.432Z" />
+            </svg>
+        </a>
+        <a class="nav__item" href="https://github.com/Pine1611/deploy-multi-branches/blob/main/README.md"
+            target="_blank">
+            <svg width="20" height="20" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path fill="#F05032"
+                    d="M23.546 10.93L13.067.452c-.604-.603-1.582-.603-2.188 0L8.708 2.627l2.76 2.76c.645-.215 1.379-.07 1.889.441.516.515.658 1.258.438 1.9l2.658 2.66c.645-.223 1.387-.078 1.9.435.721.72.721 1.884 0 2.604-.719.719-1.881.719-2.6 0-.539-.541-.674-1.337-.404-1.996L12.86 8.955v6.525c.176.086.342.203.488.348.713.721.713 1.883 0 2.6-.719.721-1.889.721-2.609 0-.719-.719-.719-1.879 0-2.598.182-.18.387-.316.605-.406V8.835c-.217-.091-.424-.222-.6-.401-.545-.545-.676-1.342-.396-2.009L7.636 3.7.45 10.881c-.6.605-.6 1.584 0 2.189l10.48 10.477c.604.604 1.582.604 2.186 0l10.43-10.43c.605-.603.605-1.582 0-2.187" />
+            </svg>
+        </a>
+    </div>
+
+    <script type="module" src="assets/js/env.mjs"></script>
+    <script type="module" src="assets/js/scripts.mjs"></script>
+</body>
+
+</html>
